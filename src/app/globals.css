@@ -33,10 +33,10 @@ body {
 /* Custom animations */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
+    box-shadow: 0 0 20px rgba(50, 200, 80, 0.3);
   }
   50% {
-    box-shadow: 0 0 40px rgba(147, 51, 234, 0.6);
+    box-shadow: 0 0 40px rgba(50, 200, 80, 0.6);
   }
 }
 
@@ -54,15 +54,15 @@ body {
   );
 }
 
-/* Orange glow behind the blob */
+/* Green glow behind the blob */
 .orange-glow {
   background: radial-gradient(
     circle at center,
-    rgba(255, 140, 50, 0.45) 0%,
-    rgba(255, 120, 40, 0.35) 15%,
-    rgba(255, 100, 30, 0.25) 30%,
-    rgba(200, 80, 20, 0.12) 50%,
-    rgba(150, 60, 10, 0.05) 70%,
+    rgba(50, 200, 80, 0.45) 0%,
+    rgba(40, 180, 70, 0.35) 15%,
+    rgba(30, 150, 60, 0.25) 30%,
+    rgba(20, 120, 50, 0.12) 50%,
+    rgba(10, 80, 30, 0.05) 70%,
     transparent 85%
   );
 }

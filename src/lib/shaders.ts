@@ -107,10 +107,10 @@ export const blobFragmentShader = `
   varying float vDisplacement;
 
   void main() {
-    // Base colors - purple to orange gradient
-    vec3 color1 = vec3(0.4, 0.2, 0.8); // Purple
-    vec3 color2 = vec3(1.0, 0.5, 0.1); // Orange
-    vec3 color3 = vec3(0.9, 0.3, 0.5); // Pink accent
+    // Base colors - brown to green gradient
+    vec3 color1 = vec3(0.4, 0.25, 0.15); // Brown
+    vec3 color2 = vec3(0.2, 0.8, 0.3); // Green
+    vec3 color3 = vec3(0.5, 0.9, 0.4); // Light green accent
 
     // Fresnel effect for edge glow
     vec3 viewDirection = normalize(cameraPosition - vPosition);
@@ -131,7 +131,7 @@ export const blobFragmentShader = `
     vec3 finalColor = baseColor + vec3(glow * 0.2);
 
     // Edge highlight
-    finalColor += fresnel * vec3(0.5, 0.3, 0.2) * (1.0 + uAudioIntensity);
+    finalColor += fresnel * vec3(0.2, 0.5, 0.3) * (1.0 + uAudioIntensity);
 
     gl_FragColor = vec4(finalColor, 1.0);
   }
