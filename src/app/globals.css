@@ -54,8 +54,21 @@ body {
   );
 }
 
-/* Green glow behind the blob */
-.orange-glow {
+/* Krea theme glow (pink/purple/orange) */
+.krea-glow {
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 100, 50, 0.45) 0%,
+    rgba(200, 80, 120, 0.35) 15%,
+    rgba(150, 60, 150, 0.25) 30%,
+    rgba(100, 50, 180, 0.12) 50%,
+    rgba(60, 30, 120, 0.05) 70%,
+    transparent 85%
+  );
+}
+
+/* Bonobo theme glow (green/brown) */
+.bonobo-glow {
   background: radial-gradient(
     circle at center,
     rgba(50, 200, 80, 0.45) 0%,

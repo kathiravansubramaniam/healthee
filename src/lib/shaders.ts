@@ -101,17 +101,16 @@ export const blobVertexShader = `
 export const blobFragmentShader = `
   uniform float uTime;
   uniform float uAudioIntensity;
+  uniform vec3 uColor1;
+  uniform vec3 uColor2;
+  uniform vec3 uColor3;
+  uniform vec3 uEdgeColor;
 
   varying vec3 vNormal;
   varying vec3 vPosition;
   varying float vDisplacement;
 
   void main() {
-    // Base colors - brown to green gradient
-    vec3 color1 = vec3(0.4, 0.25, 0.15); // Brown
-    vec3 color2 = vec3(0.2, 0.8, 0.3); // Green
-    vec3 color3 = vec3(0.5, 0.9, 0.4); // Light green accent
-
     // Fresnel effect for edge glow
     vec3 viewDirection = normalize(cameraPosition - vPosition);
     float fresnel = pow(1.0 - max(dot(viewDirection, vNormal), 0.0), 3.0);
@@ -121,8 +120,8 @@ export const blobFragmentShader = `
     mixFactor += sin(uTime * 0.5) * 0.1;
     mixFactor += uAudioIntensity * 0.2;
 
-    vec3 baseColor = mix(color1, color2, mixFactor);
-    baseColor = mix(baseColor, color3, fresnel * 0.5 + uAudioIntensity * 0.3);
+    vec3 baseColor = mix(uColor1, uColor2, mixFactor);
+    baseColor = mix(baseColor, uColor3, fresnel * 0.5 + uAudioIntensity * 0.3);
 
     // Add glow based on displacement and audio
     float glow = (vDisplacement + 0.1) * 2.0;
@@ -131,8 +130,26 @@ export const blobFragmentShader = `
     vec3 finalColor = baseColor + vec3(glow * 0.2);
 
     // Edge highlight
-    finalColor += fresnel * vec3(0.2, 0.5, 0.3) * (1.0 + uAudioIntensity);
+    finalColor += fresnel * uEdgeColor * (1.0 + uAudioIntensity);
 
     gl_FragColor = vec4(finalColor, 1.0);
   }
 `;
+
+// Theme color definitions
+export const themes = {
+  krea: {
+    color1: [0.4, 0.2, 0.8],    // Purple
+    color2: [1.0, 0.5, 0.1],    // Orange
+    color3: [0.9, 0.3, 0.5],    // Pink accent
+    edgeColor: [0.5, 0.3, 0.2], // Warm edge
+  },
+  bonobo: {
+    color1: [0.4, 0.25, 0.15],  // Brown
+    color2: [0.2, 0.8, 0.3],    // Green
+    color3: [0.5, 0.9, 0.4],    // Light green accent
+    edgeColor: [0.2, 0.5, 0.3], // Green edge
+  },
+} as const;
+
+export type ThemeName = keyof typeof themes;

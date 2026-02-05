@@ -8,6 +8,7 @@ import { useChat } from '@/hooks/useChat';
 import { Transcript } from '@/components/Transcript';
 import { Response } from '@/components/Response';
 import { StatusIndicator } from '@/components/StatusIndicator';
+import { ThemeName } from '@/lib/shaders';
 
 // Dynamic import for Three.js scene to avoid SSR issues
 const BlobScene = dynamic(
@@ -20,6 +21,7 @@ type AppStatus = 'idle' | 'listening' | 'processing' | 'error';
 export default function Home() {
   const [status, setStatus] = useState<AppStatus>('idle');
   const [lastResponse, setLastResponse] = useState('');
+  const [theme, setTheme] = useState<ThemeName>('krea');
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTranscriptRef = useRef('');
 
@@ -139,12 +141,25 @@ export default function Home() {
       className="relative w-full h-screen cursor-pointer select-none"
       onClick={handleClick}
     >
-      {/* Orange glow behind blob */}
-      <div className="absolute inset-0 orange-glow pointer-events-none z-0" />
+      {/* Theme toggle button */}
+      <div className="absolute top-4 right-4 z-50">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setTheme(theme === 'krea' ? 'bonobo' : 'krea');
+          }}
+          className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/80 text-sm font-medium hover:bg-white/20 transition-colors border border-white/20"
+        >
+          {theme === 'krea' ? 'Krea' : 'Bonobo'}
+        </button>
+      </div>
+
+      {/* Glow behind blob */}
+      <div className={`absolute inset-0 ${theme === 'krea' ? 'krea-glow' : 'bonobo-glow'} pointer-events-none z-0`} />
 
       {/* Three.js Background */}
       <div className="absolute inset-0 z-10">
-        <BlobScene audioIntensity={audioIntensity} />
+        <BlobScene audioIntensity={audioIntensity} theme={theme} />
       </div>
 
       {/* Gradient overlay for better text readability */}
