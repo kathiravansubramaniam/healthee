@@ -1,65 +1,177 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { useAudioAnalyzer } from '@/hooks/useAudioAnalyzer';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useChat } from '@/hooks/useChat';
+import { Transcript } from '@/components/Transcript';
+import { Response } from '@/components/Response';
+import { StatusIndicator } from '@/components/StatusIndicator';
+
+// Dynamic import for Three.js scene to avoid SSR issues
+const BlobScene = dynamic(
+  () => import('@/components/BlobScene').then(mod => ({ default: mod.BlobScene })),
+  { ssr: false }
+);
+
+type AppStatus = 'idle' | 'listening' | 'processing' | 'error';
 
 export default function Home() {
+  const [status, setStatus] = useState<AppStatus>('idle');
+  const [lastResponse, setLastResponse] = useState('');
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTranscriptRef = useRef('');
+
+  const {
+    audioIntensity,
+    isListening: isAudioListening,
+    startListening: startAudio,
+    stopListening: stopAudio,
+    error: audioError,
+  } = useAudioAnalyzer();
+
+  const {
+    transcript,
+    interimTranscript,
+    isRecognizing,
+    startRecognition,
+    stopRecognition,
+    resetTranscript,
+    error: speechError,
+    isSupported: speechSupported,
+  } = useSpeechRecognition();
+
+  const { messages, isProcessing, sendMessage } = useChat();
+
+  // Get the latest assistant response
+  useEffect(() => {
+    const assistantMessages = messages.filter(m => m.role === 'assistant');
+    if (assistantMessages.length > 0) {
+      setLastResponse(assistantMessages[assistantMessages.length - 1].content);
+    }
+  }, [messages]);
+
+  // Update status based on state
+  useEffect(() => {
+    if (audioError || speechError) {
+      setStatus('error');
+    } else if (isProcessing) {
+      setStatus('processing');
+    } else if (isRecognizing && isAudioListening) {
+      setStatus('listening');
+    } else {
+      setStatus('idle');
+    }
+  }, [isProcessing, isRecognizing, isAudioListening, audioError, speechError]);
+
+  // Voice Activity Detection - detect silence and send message
+  useEffect(() => {
+    // Clear existing timeout
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+
+    // If we have a transcript and audio is quiet, start silence timer
+    const currentTranscript = transcript + interimTranscript;
+
+    if (currentTranscript && isRecognizing && audioIntensity < 0.05) {
+      silenceTimeoutRef.current = setTimeout(() => {
+        // Only send if transcript has changed
+        if (transcript && transcript !== lastTranscriptRef.current) {
+          lastTranscriptRef.current = transcript;
+          stopRecognition();
+          sendMessage(transcript);
+          resetTranscript();
+        }
+      }, 1500); // 1.5 second silence threshold
+    }
+
+    return () => {
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+    };
+  }, [transcript, interimTranscript, audioIntensity, isRecognizing, sendMessage, stopRecognition, resetTranscript]);
+
+  // Auto-restart recognition after response is shown
+  useEffect(() => {
+    if (!isProcessing && status === 'idle' && isAudioListening && !isRecognizing) {
+      // Small delay before restarting recognition
+      const timeout = setTimeout(() => {
+        startRecognition();
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [isProcessing, status, isAudioListening, isRecognizing, startRecognition]);
+
+  const handleStart = useCallback(async () => {
+    if (!speechSupported) {
+      alert('Speech recognition is not supported in your browser. Please use Chrome.');
+      return;
+    }
+
+    await startAudio();
+    startRecognition();
+    setLastResponse('');
+    lastTranscriptRef.current = '';
+  }, [startAudio, startRecognition, speechSupported]);
+
+  const handleStop = useCallback(() => {
+    stopAudio();
+    stopRecognition();
+    setStatus('idle');
+  }, [stopAudio, stopRecognition]);
+
+  const handleClick = useCallback(() => {
+    if (status === 'idle' && !isAudioListening) {
+      handleStart();
+    } else if (status !== 'processing') {
+      handleStop();
+    }
+  }, [status, isAudioListening, handleStart, handleStop]);
+
+  const errorMessage = audioError || speechError || undefined;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main
+      className="relative w-full h-screen cursor-pointer select-none"
+      onClick={handleClick}
+    >
+      {/* Orange glow behind blob */}
+      <div className="absolute inset-0 orange-glow pointer-events-none z-0" />
+
+      {/* Three.js Background */}
+      <div className="absolute inset-0 z-10">
+        <BlobScene audioIntensity={audioIntensity} />
+      </div>
+
+      {/* Gradient overlay for better text readability */}
+      <div className="absolute inset-0 gradient-overlay pointer-events-none z-20" />
+
+      {/* AI Response at top */}
+      <Response text={lastResponse} isTyping={isProcessing} />
+
+      {/* User transcript at bottom */}
+      <Transcript
+        text={transcript}
+        interimText={interimTranscript}
+        isVisible={isRecognizing}
+      />
+
+      {/* Status indicator */}
+      <StatusIndicator status={status} errorMessage={errorMessage} />
+
+      {/* Instructions overlay when idle */}
+      {status === 'idle' && !isAudioListening && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <p className="text-white/30 text-lg mb-2">Click anywhere to start</p>
+            <p className="text-white/20 text-sm">Speak and the blob will react to your voice</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+    </main>
   );
 }
